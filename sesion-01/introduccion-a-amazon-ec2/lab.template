@@ -1,0 +1,87 @@
+# Creates a "Lab VPC" for student use
+Resources:
+
+  LabVPC:
+    Type: AWS::EC2::VPC
+    Properties:
+      EnableDnsHostnames: true
+      EnableDnsSupport: true
+      CidrBlock: 10.0.0.0/16
+      Tags:
+        - Key: Name
+          Value: Lab VPC
+
+  InternetGateway:
+    Type: AWS::EC2::InternetGateway
+
+  AttachGateway:
+    Type: AWS::EC2::VPCGatewayAttachment
+    Properties:
+      VpcId: !Ref LabVPC
+      InternetGatewayId: !Ref InternetGateway
+
+  LabSubnet1:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref LabVPC
+      MapPublicIpOnLaunch: true
+      CidrBlock: 10.0.1.0/24
+      AvailabilityZone: !Select 
+        - '0'
+        - !GetAZs ''
+      Tags:
+        - Key: Name
+          Value: Public Subnet 1
+
+  LabSubnet2:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref LabVPC
+      MapPublicIpOnLaunch: true
+      CidrBlock: 10.0.2.0/24
+      AvailabilityZone: !Select 
+        - '1'
+        - !GetAZs ''
+      Tags:
+        - Key: Name
+          Value: Public Subnet 2
+
+  LabRouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref LabVPC
+      Tags:
+        - Key: Name
+          Value: Route table for subnets
+
+  PublicRoute:
+    Type: AWS::EC2::Route
+    Properties:
+      RouteTableId: !Ref LabRouteTable
+      DestinationCidrBlock: 0.0.0.0/0
+      GatewayId: !Ref InternetGateway
+
+  Subnet1RouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref LabSubnet1
+      RouteTableId: !Ref LabRouteTable
+
+  Subnet2RouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref LabSubnet2
+      RouteTableId: !Ref LabRouteTable
+
+#  userAccessKey:
+#    Type: AWS::IAM::AccessKey
+#    Properties:
+#      UserName: 'awsstudent'        
+
+#Outputs:
+#  AccessKeys:
+#    Description: The users access key is.
+#    Value: !Ref userAccessKey                       
+#  SecretAccessKey:
+#    Description: The users secret access key is.
+#    Value: !GetAtt userAccessKey.SecretAccessKey   
