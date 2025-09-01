@@ -10,6 +10,12 @@ Thumbs.db
 # CSV files (datos sensibles/temporales)
 *.csv
 
+# Directorio del instructor (contenido privado)
+instructor/
+
+# Directorio de Claude AI (archivos de configuración local)
+.claude/
+
 # Logs
 logs
 *.log
