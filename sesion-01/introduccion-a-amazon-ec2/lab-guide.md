@@ -1,5 +1,9 @@
 # Introducción a Amazon EC2
 
+> **📦 Nota Importante**: Este laboratorio incluye archivos adicionales (templates, scripts, imágenes) que están disponibles en: https://250901-machine-learning-soltiva.s3.us-east-1.amazonaws.com/sesion-01.zip
+> 
+> **Sigue las instrucciones de configuración en CloudShell** antes de proceder con el laboratorio.
+
 ## Información general
 
 <img src="images/lab-scenario.jpg" alt="diagrama de la arquitectura" width="400">
@@ -32,7 +36,82 @@ Al final de este laboratorio, podrá hacer lo siguiente:
 
 El tiempo estimado para completar este laboratorio es de **45 minutos** aproximadamente.
 
+---
 
+## 🚀 Configuración del Laboratorio en AWS CloudShell
+
+### Paso 1: Acceder a AWS CloudShell
+
+1. Inicia sesión en AWS Management Console
+2. En la barra de navegación superior, busca el ícono de **CloudShell** (terminal) o busca "CloudShell" en el buscador de servicios
+3. Haz clic para abrir AWS CloudShell
+
+### Paso 2: Descargar los Archivos del Laboratorio
+
+Ejecuta los siguientes comandos en CloudShell:
+
+```bash
+# Descargar el archivo ZIP del laboratorio
+wget https://250901-machine-learning-soltiva.s3.us-east-1.amazonaws.com/sesion-01.zip
+
+# Descomprimir el archivo
+unzip sesion-01.zip
+
+# Navegar al directorio del laboratorio EC2
+cd sesion-01/introduccion-a-amazon-ec2/
+
+# Verificar que los archivos se descargaron correctamente
+ls -la
+```
+
+### Paso 3: Hacer Ejecutables los Scripts
+
+```bash
+# Dar permisos de ejecución a los scripts
+chmod +x deploy-lab.sh
+chmod +x cleanup-lab.sh
+
+# Verificar los permisos
+ls -la *.sh
+```
+
+### Paso 4: Desplegar la Infraestructura del Laboratorio
+
+```bash
+# Ejecutar el script de despliegue
+./deploy-lab.sh
+```
+
+**Nota**: El script creará automáticamente:
+- Una VPC con subredes públicas y privadas
+- Un Internet Gateway
+- Tablas de enrutamiento
+- Grupos de seguridad
+- Todos los recursos necesarios para el laboratorio
+
+### Paso 5: Verificar el Despliegue
+
+```bash
+# Verificar el estado del stack de CloudFormation
+aws cloudformation describe-stacks \
+  --stack-name lab-ec2-infrastructure \
+  --query 'Stacks[0].StackStatus'
+
+# Ver los recursos creados
+aws cloudformation describe-stack-resources \
+  --stack-name lab-ec2-infrastructure
+```
+
+### 🧹 Limpieza (Al Finalizar el Laboratorio)
+
+Cuando termines el laboratorio, ejecuta:
+
+```bash
+# Limpiar todos los recursos creados
+./cleanup-lab.sh
+```
+
+---
 
 ## Acceso a AWS Management Console
 

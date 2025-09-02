@@ -137,7 +137,12 @@
         "tag:*"
       ],
       "Effect": "Allow",
-      "Resource": "*"
+      "Resource": "*",
+      "Condition": {
+        "StringEquals": {
+          "aws:RequestedRegion": "us-east-1"
+        }
+      }
     },
     {
       "Sid": "RestrictInstanceActions",

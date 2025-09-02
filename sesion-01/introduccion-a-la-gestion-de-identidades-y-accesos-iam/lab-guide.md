@@ -1,5 +1,9 @@
 # Introducción a AWS Identity and Access Management (IAM) (Spanish)
 
+> **📦 Nota Importante**: Este laboratorio incluye archivos adicionales (templates, scripts, imágenes) que están disponibles en: https://250901-machine-learning-soltiva.s3.us-east-1.amazonaws.com/sesion-01.zip
+> 
+> **Sigue las instrucciones de configuración en CloudShell** antes de proceder con el laboratorio.
+
 En muchos entornos de negocios, el acceso involucra un inicio de sesión único en un equipo o una red de sistemas que proporciona al usuario acceso a todos los recursos de la red. Este acceso incluye los derechos a los archivos personales y compartidos en un servidor de red, intranet de empresas, impresoras y otros recursos y dispositivos de red. Los usuarios no autorizados pueden explotar rápidamente estos mismos recursos si el control de acceso y los procedimientos de autenticación asociados no están configurados correctamente.
 
 En este laboratorio, explorará los usuarios, grupos de usuarios y políticas en el servicio AWS Identity and Access Management (IAM).
@@ -35,8 +39,88 @@ Después de completar este laboratorio, podrá realizar lo siguiente:
 
 ## Duración
 
-El tiempo estimado para completar este laboratorio es de **60 minutos**.
+El tiempo estimado para completar este laboratorio es de **60 minutos**.
 
+---
+
+## 🚀 Configuración del Laboratorio en AWS CloudShell
+
+### Paso 1: Acceder a AWS CloudShell
+
+1. Inicia sesión en AWS Management Console
+2. En la barra de navegación superior, busca el ícono de **CloudShell** (terminal) o busca "CloudShell" en el buscador de servicios
+3. Haz clic para abrir AWS CloudShell
+
+### Paso 2: Descargar los Archivos del Laboratorio
+
+Ejecuta los siguientes comandos en CloudShell:
+
+```bash
+# Descargar el archivo ZIP del laboratorio (si no lo has hecho ya)
+wget https://250901-machine-learning-soltiva.s3.us-east-1.amazonaws.com/sesion-01.zip
+
+# Descomprimir el archivo
+unzip sesion-01.zip
+
+# Navegar al directorio del laboratorio IAM
+cd sesion-01/introduccion-a-la-gestion-de-identidades-y-accesos-iam/
+
+# Verificar que los archivos se descargaron correctamente
+ls -la
+```
+
+### Paso 3: Hacer Ejecutables los Scripts
+
+```bash
+# Dar permisos de ejecución a los scripts
+chmod +x deploy-lab.sh
+chmod +x cleanup-lab.sh
+
+# Verificar los permisos
+ls -la *.sh
+```
+
+### Paso 4: Desplegar la Infraestructura del Laboratorio
+
+```bash
+# Ejecutar el script de despliegue (necesitarás especificar tu Key Pair)
+./deploy-lab.sh YOUR_KEY_PAIR_NAME
+```
+
+**Importante**: Reemplaza `YOUR_KEY_PAIR_NAME` con el nombre de tu Key Pair existente en EC2.
+
+**Nota**: El script creará automáticamente:
+- Usuarios IAM de prueba
+- Grupos de usuarios con diferentes permisos
+- Políticas de seguridad
+- Instancias EC2 para pruebas
+- Todos los recursos necesarios para el laboratorio
+
+### Paso 5: Verificar el Despliegue
+
+```bash
+# Verificar el estado del stack de CloudFormation
+aws cloudformation describe-stacks \
+  --stack-name lab-iam-infrastructure \
+  --query 'Stacks[0].StackStatus'
+
+# Ver los usuarios IAM creados
+aws iam list-users
+
+# Ver los grupos creados
+aws iam list-groups
+```
+
+### 🧹 Limpieza (Al Finalizar el Laboratorio)
+
+Cuando termines el laboratorio, ejecuta:
+
+```bash
+# Limpiar todos los recursos creados
+./cleanup-lab.sh
+```
+
+---
 
 ## Cómo acceder a la Consola de administración de AWS
 
