@@ -23,11 +23,11 @@ Aprende a crear una VPC con subredes públicas y privadas, configurar tablas de 
 **Certificación**: Cloud Practitioner  
 Implementa una arquitectura de red personalizada y despliega un servidor web en una instancia EC2.
 
-### [📡 Laboratorio 2.3: Recursos de red para una VPC](./recursos-de-red-para-una-vpc/)
-**Duración**: Por determinar  
-**Servicios**: VPC, Networking  
+### [📡 Laboratorio 2.3: Creación de recursos de redes en una Amazon VPC](./recursos-de-red-para-una-vpc/lab-guide.md)
+**Duración**: 60 minutos  
+**Servicios**: VPC, IGW, Route Tables, NACL, Security Groups  
 **Certificación**: Cloud Practitioner  
-*En desarrollo* - Exploración avanzada de recursos de red en VPC.
+Aprende a crear recursos de red desde cero, incluyendo tablas de enrutamiento, ACLs de red y grupos de seguridad para resolver problemas de conectividad.
 
 ---
 
