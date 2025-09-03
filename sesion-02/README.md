@@ -1,30 +1,38 @@
-# 🌐 Sesión 2: Redes y VPC
+# 🌐 Sesión 2: Redes en AWS
 
 ## 📋 Descripción
-Configuración de infraestructura de red en AWS usando Virtual Private Clouds (VPC).
+Introducción a los servicios de red de Amazon Web Services, enfocándose en la configuración de redes virtuales privadas (VPC) y componentes de conectividad.
 
 ## 🎯 Objetivos de Aprendizaje
-- Crear y configurar redes virtuales privadas
-- Implementar subredes y tablas de enrutamiento
-- Lanzar servidores web en infraestructura de red personalizada
+- Comprender los conceptos básicos de redes en la nube
+- Aprender a crear y configurar VPCs
+- Implementar subredes públicas y privadas
+- Configurar componentes de conectividad como NAT Gateway y Bastion Hosts
 
 ## 📚 Laboratorios
 
-### [🌐 Configuración de una Amazon VPC](./configuracion-de-una-amazon-vpc/)
+### [🏗️ Laboratorio 2.1: Configuración de una Amazon VPC](./configuracion-de-una-amazon-vpc/lab-guide.md)
 **Duración**: 45 minutos  
-**Servicios**: VPC, EC2  
-Creación de redes virtuales privadas con subredes y gateways.
+**Servicios**: VPC, EC2, NAT Gateway  
+**Certificación**: Cloud Practitioner  
+Aprende a crear una VPC con subredes públicas y privadas, configurar tablas de enrutamiento y usar un servidor bastión.
 
-### [🖥️ Creación de una VPC y lanzamiento de un servidor web](./creacion-de-una-vpc-y-lanzamiento-de-un-servidor-web/)
+### [🖥️ Laboratorio 2.2: Creación de una VPC y lanzamiento de un servidor web](./creacion-de-una-vpc-y-lanzamiento-de-un-servidor-web/lab.template.md)
 **Duración**: 45 minutos  
-**Servicios**: EC2, VPC  
-Implementación práctica integrando redes y computación.
+**Servicios**: VPC, EC2, Security Groups  
+**Certificación**: Cloud Practitioner  
+Implementa una arquitectura de red personalizada y despliega un servidor web en una instancia EC2.
 
-### [🔗 Recursos de red para una VPC](./recursos-de-red-para-una-vpc/)
-**Duración**: 30 minutos  
-**Servicios**: EC2, VPC  
-Configuración avanzada de grupos de seguridad y ACLs.
+### [📡 Laboratorio 2.3: Recursos de red para una VPC](./recursos-de-red-para-una-vpc/)
+**Duración**: Por determinar  
+**Servicios**: VPC, Networking  
+**Certificación**: Cloud Practitioner  
+*En desarrollo* - Exploración avanzada de recursos de red en VPC.
 
 ---
 
-[⬅️ Volver al inicio](../README.md)
+## 🧭 Navegación
+
+| Anterior | Inicio | Siguiente |
+|----------|--------|-----------|
+| [🔰 Sesión 1: Fundamentos ⬅️](../sesion-01/README.md) | [🏠 Inicio](../README.md) | [☁️ Sesión 3: Almacenamiento ➡️](../sesion-03/README.md) |
