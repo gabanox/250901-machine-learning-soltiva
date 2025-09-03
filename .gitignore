@@ -10,6 +10,9 @@ Thumbs.db
 # CSV files (datos sensibles/temporales)
 *.csv
 
+# PDF files (archivos de presentación)
+*.pdf
+
 # Directorio del instructor (contenido privado)
 instructor/
 
