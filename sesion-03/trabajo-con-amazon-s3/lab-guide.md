@@ -6,9 +6,7 @@
 
 En este laboratorio, creará y configurará un bucket de Amazon Simple Storage Service (Amazon S3) para compartir imágenes con un usuario externo de una empresa de medios (mediacouser), a quien se contrató para que proporcione fotografías de los productos que vende el café. También puede configurar el bucket de S3 para que envíe automáticamente una notificación por correo electrónico al administrador cuando se modifique el contenido del bucket.
 
-En el siguiente diagrama, se muestra la arquitectura de los componentes de la solución de uso compartido de archivos de Amazon S3 y se ilustra su flujo de uso.
-
-(images/activity-architecture-diagram.png)
+![En el siguiente diagrama, se muestra la arquitectura de los componentes de la solución de uso compartido de archivos de Amazon S3 y se ilustra su flujo de uso.](images/activity-architecture-diagram.png)
 
 Previamente, se creó un usuario de AWS Identity and Access Management (AWS IAM), que se denominó mediacouser y que representa a un usuario externo de la empresa de medios con los permisos de Amazon S3 indicados que le permiten agregar, cambiar o eliminar imágenes del bucket. Los permisos de Amazon S3 necesarios se revisan por usuario, para garantizar que el acceso al bucket sea seguro y adecuado para cada rol.  
 
