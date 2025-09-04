@@ -1,0 +1,438 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: VPC with CLI Host and IAM user
+Parameters:
+  VPCCIDR:
+    Description: CIDR Block for CafeVPC
+    Type: String
+    Default: 10.200.0.0/20
+    AllowedValues:
+      - 10.200.0.0/20
+  PublicSubnet1Param:
+    Description: Public Subnet 1
+    Type: String
+    Default: 10.200.0.0/24
+    AllowedValues:
+      - 10.200.0.0/24
+  KeyName:
+    Type: String
+    Description: Keyname for the keypair
+    Default: lab-key-pair
+  AmazonLinuxAMIID:
+    Type: 'AWS::SSM::Parameter::Value<AWS::EC2::Image::Id>'
+    Default: '/aws/service/ami-amazon-linux-latest/amzn2-ami-hvm-x86_64-gp2'
+
+Resources:
+  VPC:
+    Type: 'AWS::EC2::VPC'
+    Properties:
+      CidrBlock: !Ref VPCCIDR
+      EnableDnsHostnames: 'true'
+      Tags:
+        - Key: VPC
+          Value: Cafe
+        - Key: Name
+          Value: Cafe VPC
+  InternetGateway:
+    Type: 'AWS::EC2::InternetGateway'
+    DependsOn: VPC
+  AttachGateway:
+    Type: 'AWS::EC2::VPCGatewayAttachment'
+    DependsOn:
+      - VPC
+      - InternetGateway
+    Properties:
+      VpcId: !Ref VPC
+      InternetGatewayId: !Ref InternetGateway
+  PublicSubnet1:
+    Type: 'AWS::EC2::Subnet'
+    DependsOn: VPC
+    Properties:
+      VpcId: !Ref VPC
+      CidrBlock: !Ref PublicSubnet1Param
+      AvailabilityZone: !Select
+        - '0'
+        - !GetAZs ''
+      MapPublicIpOnLaunch: 'true'
+      Tags:
+        - Key: Name
+          Value: Cafe Public Subnet 1
+  PublicRouteTable:
+    Type: 'AWS::EC2::RouteTable'
+    DependsOn:
+      - VPC
+      - AttachGateway
+    Properties:
+      VpcId: !Ref VPC
+      Tags:
+        - Key: Name
+          Value: Public Route Table
+  PublicRoute:
+    Type: 'AWS::EC2::Route'
+    DependsOn:
+      - VPC
+      - PublicRouteTable
+      - InternetGateway
+      - AttachGateway
+    Properties:
+      RouteTableId: !Ref PublicRouteTable
+      DestinationCidrBlock: 0.0.0.0/0
+      GatewayId: !Ref InternetGateway
+  PublicSubnet1RouteTableAssociation:
+    Type: 'AWS::EC2::SubnetRouteTableAssociation'
+    DependsOn:
+      - PublicRouteTable
+      - PublicSubnet1
+    Properties:
+      SubnetId: !Ref PublicSubnet1
+      RouteTableId: !Ref PublicRouteTable
+  CliHostInstanceSG:
+    Type: 'AWS::EC2::SecurityGroup'
+    DependsOn: VPC
+    Properties:
+      GroupDescription: Security group for the CLI Host Linux instance
+      VpcId: !Ref VPC
+      Tags:
+        - Key: Name
+          Value: CLI Host SG
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: '22'
+          ToPort: '22'
+          CidrIp: 0.0.0.0/0
+      SecurityGroupEgress:
+        - IpProtocol: '-1'
+          FromPort: '0'
+          ToPort: '65535'
+          CidrIp: 0.0.0.0/0
+  CliHostInstance:
+    Type: 'AWS::EC2::Instance'
+    DependsOn:
+      - VPC
+      - CliHostInstanceSG
+      - PublicSubnet1
+    Properties:
+      ImageId: !Ref AmazonLinuxAMIID
+      KeyName: !Ref KeyName
+      InstanceType: t3.micro
+      NetworkInterfaces:
+        - DeviceIndex: '0'
+          AssociatePublicIpAddress: 'true'
+          SubnetId: !Ref PublicSubnet1
+          GroupSet:
+            - !Ref CliHostInstanceSG
+      SourceDestCheck: 'false'
+      Tags:
+        - Key: Name
+          Value: CLI Host
+      UserData: !Base64
+        'Fn::Join':
+          - ''
+          - - |
+              #!/bin/bash -ex
+            - |
+              yum -y update
+            - |
+              yum install -y wget
+            - |
+              cd /home/ec2-user
+            - >
+              wget
+              https://aws-tc-largeobjects.s3.us-west-2.amazonaws.com/CUR-TF-100-RSJAWS-1-23732/185-activity-JAWS-working-s3/s3/initial-images.tar.gz
+            - |
+              tar -zxvf initial-images.tar.gz
+            - |
+              chown -R ec2-user:ec2-user /home/ec2-user/initial-images
+            - |
+              chown ec2-user:ec2-user /home/ec2-user/initial-images.tar.gz
+            - >
+              wget
+              https://aws-tc-largeobjects.s3.us-west-2.amazonaws.com/CUR-TF-100-RSJAWS-1-23732/185-activity-JAWS-working-s3/s3/new-images.tar.gz
+            - |
+              tar -zxvf new-images.tar.gz
+            - |
+              chown -R ec2-user:ec2-user /home/ec2-user/new-images
+            - |
+              chown ec2-user:ec2-user /home/ec2-user/new-images.tar.gz
+  mediacoIAMGroup:
+    Type: 'AWS::IAM::Group'
+    Properties:
+      Path: /
+      GroupName: mediaco
+      ManagedPolicyArns:
+        - 'arn:aws:iam::aws:policy/IAMUserChangePassword'
+      Policies:
+        - PolicyName: mediaCoPolicy
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Sid: AllowGroupToSeeBucketListInTheConsole
+                Action:
+                  - 's3:ListAllMyBuckets'
+                  - 's3:GetBucketLocation'
+                Effect: Allow
+                Resource:
+                  - 'arn:aws:s3:::*'
+              - Sid: AllowRootLevelListingOfTheBucket
+                Action:
+                  - 's3:ListBucket'
+                Effect: Allow
+                Resource:
+                  - 'arn:aws:s3:::cafe-*'
+                  - 'arn:aws:s3:::cafe-*/*'
+              - Sid: AllowUserSpecificActionsOnlyInTheSpecificPrefix
+                Effect: Allow
+                Action:
+                  - 's3:PutObject'
+                  - 's3:GetObject'
+                  - 's3:GetObjectVersion'
+                  - 's3:DeleteObject'
+                  - 's3:DeleteObjectVersion'
+                Resource: 'arn:aws:s3:::cafe-*/images/*'
+  mediacoIAMUser:
+    Type: 'AWS::IAM::User'
+    DependsOn: mediacoIAMGroup
+    Properties:
+      Path: /
+      Groups:
+        - !Ref mediacoIAMGroup
+      LoginProfile:
+        Password: Training1!
+      UserName: mediacouser
+
+###########
+# Read only access for awsstudent (across services)
+###########
+
+  ReadOnlyGroup:
+      Type: AWS::IAM::Group
+      Properties:
+        GroupName: QLReadOnly
+        ManagedPolicyArns: [ "arn:aws:iam::aws:policy/ReadOnlyAccess" ]
+
+  GroupAssignment:
+    Type: AWS::IAM::UserToGroupAddition
+    DependsOn: ReadOnlyGroup
+    Properties:
+      GroupName: QLReadOnly
+      Users:
+        - awsstudent
+
+  IAMUser:
+    Type: 'AWS::IAM::User'
+    Properties:
+      UserName: awsstudent
+
+  IAMPolicy:
+    Type: 'AWS::IAM::ManagedPolicy'
+    DependsOn: IAMUser
+    Properties:
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement: [
+          {
+            "Sid": "AllowAllActions",
+            "Effect": "Allow",
+            "Action": [
+                "cloudformation:List*",
+                "cloudformation:Describe*",
+                "cloudformation:Detect*",
+                "cloudformation:EstimateTemplateCost",
+                "cloudformation:Get*",
+                "cloudwatch:*",
+                "ec2:*Address*",
+                "ec2:*associate*",
+                "ec2:AttachVolume",
+                "ec2:BundleInstance",
+                "ec2:Cancel*",
+                "ec2:*Capacity*",
+                "ec2:CreateInstanceExportTask",
+                "ec2:CreateFlowLogs",
+                "ec2:*Credit*",
+                "ec2:*Cidr",
+                "ec2:Delete*",
+                "ec2:Describe*",
+                "ec2:DetachVolume",
+                "ec2:*Dhcp*",
+                "ec2:*Ebs*",
+                "ec2:*Event*",
+                "ec2:*Fleet*",
+                "ec2:*Format",
+                "ec2:*Gateway*",
+                "ec2:Get*",
+                "ec2:*InstanceAttribute",
+                "ec2:*InternetGateway",
+                "ec2:*Image*",
+                "ec2:*KeyPair",
+                "ec2:*Kms*",
+                "ec2:*monitor*",
+                "ec2:*Network*",
+                "ec2:*Options",
+                "ec2:*PrefixList*",
+                "ec2:ReportInstanceStatus",
+                "ec2:RebootInstances",
+                "ec2:ReplaceIamInstanceProfileAssociation",
+                "ec2:*Route*",
+                "ec2:*SecurityGroup*",
+                "ec2:Search*",
+                "ec2:SendDiagnosticInterrupt",
+                "ec2:StopInstances",
+                "ec2:*Snapshot*",
+                "ec2:*Subnet*",
+                "ec2:*Tag*",
+                "ec2:TerminateInstances",
+                "ec2:*Traffic*",
+                "ec2:*Vpn*",
+                "ec2:*Vpc*",
+                "events:Describe*",
+                "events:List*",
+                "events:TestEventPattern",
+                "iam:List*",
+                "iam:Get*",
+                "kms:DescribeKey",
+                "logs:List*",
+                "logs:Describe*",
+                "logs:Get*",
+                "logs:StartQuery",
+                "logs:StopQuery",
+                "logs:TestMetricFilter",
+                "logs:FilterLogEvents",
+                "resource-groups:Get*",
+                "resource-groups:List*",
+                "resource-groups:SearchResources",
+                "s3:Create*",
+                "s3:Get*",
+                "s3:Put*",
+                "s3:Delete*",
+                "s3:List*",
+                "ssm:List*",
+                "ssm:Describe*",
+                "ssm:Get*",
+                "ssm:PutInventory",
+                "ssm:PutComplianceItems",
+                "ssm:PutConfigurePackageResult",
+                "ssm:UpdateAssociationStatus",
+                "ssm:UpdateInstanceAssociationStatus",
+                "ssm:UpdateInstanceInformation",
+                "ssm:CancelCommand",
+                "ssm:SendCommand",
+                "ssm:StartAutomationExecution",
+                "ssm:StartSession",
+                "ssm:TerminateSession",
+                "ssm:ResumeSession",
+                "ssm:DescribeSessions",
+                "ssm:GetConnectionStatus",
+                "sns:*",
+                "tag:*"
+            ],
+            "Resource": "*"
+        },
+        {
+            "Sid": "RestrictInstanceActions",
+            "Effect": "Allow",
+            "Action": [
+                "ec2:CreateFleet",
+                "ec2:CreateLaunchTemplate",
+                "ec2:CreateLaunchTemplateVersion",
+                "ec2:CreateVolume",
+                "ec2:EnableVolumeIO",
+                "ec2:ImportInstance",
+                "ec2:ImportSnapshot",
+                "ec2:ImportVolume",
+                "ec2:ModifyFleet",
+                "ec2:ModifyInstanceAttribute",
+                "ec2:ModifyInstanceCreditSpecification",
+                "ec2:ModifyLaunchTemplate",
+                "ec2:ModifyVolume",
+                "ec2:ModifyVolumeAttribute",
+                "ec2:RebootInstances",
+                "ec2:ResetInstanceAttribute",
+                "ec2:RunInstances",
+                "ec2:StartInstances"
+            ],
+            "Resource": "*",
+            "Condition": {
+                "StringEqualsIfExists": {
+                    "ec2:Owner": "amazon"
+                },
+                "StringLikeIfExists": {
+                    "ec2:InstanceType": [
+                        "t*.nano",
+                        "t*.micro",
+                        "t*.small"
+                    ],
+                    "ec2:Tenancy": "default"
+                },
+                "StringNotEqualsIfExists": {
+                    "ec2:PlacementGroupStrategy": "cluster"
+                },
+                "StringNotLikeIfExists": {
+                    "ec2:VolumeType": [
+                        "io*",
+                        "st*"
+                    ]
+                },
+                "NumericLessThanEqualsIfExists": {
+                    "ec2:VolumeSize": "100"
+                }
+            }
+        },
+        {
+            "Sid": "RestrictActions",
+            "Effect": "Deny",
+            "Action": [
+                "ec2:*Fpga*",
+                "ec2:*Purchase*",
+                "ec2:*ReservedInstances*",
+                "ec2:*Scheduled*",
+                "ec2:*Spot*",
+                "ec2:AcceptVpcEndpointConnections",
+                "ec2:AttachVpnGateway",
+                "ec2:CreateCapacityReservation",
+                "ec2:CreateVpnGateway",
+                "ec2:EnableFastSnapshotRestores"
+            ],
+            "Resource": "*"
+        },
+        {
+            "Sid": "IAMPermissions",
+            "Effect": "Allow",
+            "Action": [
+                "iam:ChangePassword",
+                "iam:Tag*",
+                "iam:Untag*",
+                "iam:CreateAccessKey"
+            ],
+            "Resource": "*"
+        }
+        ]
+      ManagedPolicyName: lab_policy
+      Users:
+        - awsstudent
+
+  IAMUserAccessKey:
+    Type: 'AWS::IAM::AccessKey'
+    DependsOn: IAMUser
+    Properties:
+      Status: Active
+      UserName: awsstudent
+
+  AwsStudentAccessKey:
+    Type: AWS::IAM::AccessKey
+    DependsOn: IAMUser
+    Properties:
+      Status: Active
+      UserName: awsstudent
+
+Outputs:
+
+  LabRegion:
+    Description: The lab region is
+    Value: !Ref AWS::Region
+
+  AccessKey:
+    Value: !Ref IAMUserAccessKey
+
+  SecretKey:
+    Value: !GetAtt
+      - IAMUserAccessKey
+      - SecretAccessKey

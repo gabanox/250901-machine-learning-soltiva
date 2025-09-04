@@ -1,0 +1,181 @@
+{
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+            "Sid": "AllowAllActions",
+            "Effect": "Allow",
+            "Action": [
+                "cloudformation:List*",
+                "cloudformation:Describe*",
+                "cloudformation:Detect*",
+                "cloudformation:EstimateTemplateCost",
+                "cloudformation:Get*",
+                "cloudwatch:*",
+                "ec2:*Address*",
+                "ec2:*associate*",
+                "ec2:AttachVolume",
+                "ec2:BundleInstance",
+                "ec2:Cancel*",
+                "ec2:*Capacity*",
+                "ec2:CreateInstanceExportTask",
+                "ec2:CreateFlowLogs",
+                "ec2:*Credit*",
+                "ec2:*Cidr",
+                "ec2:Delete*",
+                "ec2:Describe*",
+                "ec2:DetachVolume",
+                "ec2:*Dhcp*",
+                "ec2:*Ebs*",
+                "ec2:*Event*",
+                "ec2:*Fleet*",
+                "ec2:*Format",
+                "ec2:*Gateway*",
+                "ec2:Get*",
+                "ec2:*InstanceAttribute",
+                "ec2:*InternetGateway",
+                "ec2:*Image*",
+                "ec2:*KeyPair",
+                "ec2:*Kms*",
+                "ec2:*monitor*",
+                "ec2:*Network*",
+                "ec2:*Options",
+                "ec2:*PrefixList*",
+                "ec2:ReportInstanceStatus",
+                "ec2:RebootInstances",
+                "ec2:ReplaceIamInstanceProfileAssociation",
+                "ec2:*Route*",
+                "ec2:*SecurityGroup*",
+                "ec2:Search*",
+                "ec2:SendDiagnosticInterrupt",
+                "ec2:StopInstances",
+                "ec2:*Snapshot*",
+                "ec2:*Subnet*",
+                "ec2:*Tag*",
+                "ec2:TerminateInstances",
+                "ec2:*Traffic*",
+                "ec2:*Vpn*",
+                "ec2:*Vpc*",
+                "events:Describe*",
+                "events:List*",
+                "events:TestEventPattern",
+                "iam:List*",
+                "iam:Get*",
+                "kms:DescribeKey",
+                "logs:List*",
+                "logs:Describe*",
+                "logs:Get*",
+                "logs:StartQuery",
+                "logs:StopQuery",
+                "logs:TestMetricFilter",
+                "logs:FilterLogEvents",
+                "resource-groups:Get*",
+                "resource-groups:List*",
+                "resource-groups:SearchResources",
+                "s3:Create*",
+                "s3:Get*",
+                "s3:Put*",
+                "s3:Delete*",
+                "s3:List*",
+                "ssm:List*",
+                "ssm:Describe*",
+                "ssm:Get*",
+                "ssm:PutInventory",
+                "ssm:PutComplianceItems",
+                "ssm:PutConfigurePackageResult",
+                "ssm:UpdateAssociationStatus",
+                "ssm:UpdateInstanceAssociationStatus",
+                "ssm:UpdateInstanceInformation",
+                "ssm:CancelCommand",
+                "ssm:SendCommand",
+                "ssm:StartAutomationExecution",
+                "ssm:StartSession",
+                "ssm:TerminateSession",
+                "ssm:ResumeSession",
+                "ssm:DescribeSessions",
+                "ssm:GetConnectionStatus",
+                "sns:*",
+                "tag:*",
+                "ec2-instance-connect:Send*"
+            ],
+            "Resource": "*"
+        },
+        {
+            "Sid": "RestrictInstanceActions",
+            "Effect": "Allow",
+            "Action": [
+                "ec2:CreateFleet",
+                "ec2:CreateLaunchTemplate",
+                "ec2:CreateLaunchTemplateVersion",
+                "ec2:CreateVolume",
+                "ec2:EnableVolumeIO",
+                "ec2:ImportInstance",
+                "ec2:ImportSnapshot",
+                "ec2:ImportVolume",
+                "ec2:ModifyFleet",
+                "ec2:ModifyInstanceAttribute",
+                "ec2:ModifyInstanceCreditSpecification",
+                "ec2:ModifyLaunchTemplate",
+                "ec2:ModifyVolume",
+                "ec2:ModifyVolumeAttribute",
+                "ec2:RebootInstances",
+                "ec2:ResetInstanceAttribute",
+                "ec2:RunInstances",
+                "ec2:StartInstances"
+            ],
+            "Resource": "*",
+            "Condition": {
+                "StringEqualsIfExists": {
+                    "ec2:Owner": "amazon"
+                },
+                "StringLikeIfExists": {
+                    "ec2:InstanceType": [
+                        "t*.nano",
+                        "t*.micro",
+                        "t*.small"
+                    ],
+                    "ec2:Tenancy": "default"
+                },
+                "StringNotEqualsIfExists": {
+                    "ec2:PlacementGroupStrategy": "cluster"
+                },
+                "StringNotLikeIfExists": {
+                    "ec2:VolumeType": [
+                        "io*",
+                        "st*"
+                    ]
+                },
+                "NumericLessThanEqualsIfExists": {
+                    "ec2:VolumeSize": "100"
+                }
+            }
+        },
+        {
+            "Sid": "RestrictActions",
+            "Effect": "Deny",
+            "Action": [
+                "ec2:*Fpga*",
+                "ec2:*Purchase*",
+                "ec2:*ReservedInstances*",
+                "ec2:*Scheduled*",
+                "ec2:*Spot*",
+                "ec2:AcceptVpcEndpointConnections",
+                "ec2:AttachVpnGateway",
+                "ec2:CreateCapacityReservation",
+                "ec2:CreateVpnGateway",
+                "ec2:EnableFastSnapshotRestores"
+            ],
+            "Resource": "*"
+        },
+        {
+            "Sid": "IAMPermissions",
+            "Effect": "Allow",
+            "Action": [
+                "iam:ChangePassword",
+                "iam:Tag*",
+                "iam:Untag*",
+                "iam:CreateAccessKey"
+            ],
+            "Resource": "*"
+        }
+    ]
+}
