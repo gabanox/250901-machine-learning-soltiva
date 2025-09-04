@@ -500,13 +500,6 @@ En esta tarea, deberá probar la configuración de la notificación de eventos d
 
 <i class="icon-flag-checkered"></i> ¡Felicitaciones! Completó el laboratorio.
 
-97. En la parte superior de esta página, seleccione <span id="ssb_voc_grey">End Lab</span> (Finalizar laboratorio) y, a continuación, elija <span id="ssb_blue">Yes</span> (Sí) para confirmar que desea finalizarlo. 
-
-    Aparecerá un panel que indica “You may close this message box now. Lab resources are terminating.” (Ya puede cerrar este cuadro de mensaje. Los recursos del laboratorio se están cerrando).
-
-98. Para cerrar el panel **End lab** (Finalizar laboratorio), seleccione la **X** en la esquina superior derecha.
-
-
 ## Recursos adicionales
 
 - [Documentación de la AWS CLI para s3](https://docs.aws.amazon.com/cli/latest/reference/s3/)
