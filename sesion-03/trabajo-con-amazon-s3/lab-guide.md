@@ -8,8 +8,6 @@ En este laboratorio, creará y configurará un bucket de Amazon Simple Storage S
 
 ![En el siguiente diagrama, se muestra la arquitectura de los componentes de la solución de uso compartido de archivos de Amazon S3 y se ilustra su flujo de uso.](images/activity-architecture-diagram.png)
 
-Previamente, se creó un usuario de AWS Identity and Access Management (AWS IAM), que se denominó mediacouser y que representa a un usuario externo de la empresa de medios con los permisos de Amazon S3 indicados que le permiten agregar, cambiar o eliminar imágenes del bucket. Los permisos de Amazon S3 necesarios se revisan por usuario, para garantizar que el acceso al bucket sea seguro y adecuado para cada rol.  
-
 Los siguientes pasos describen el flujo de uso en el diagrama:
 
 1. Cuando haya nuevas fotografías de productos disponibles o cuando las existentes deban actualizarse, un representante de la empresa de medios iniciará sesión en la Consola de administración de AWS como **mediacouser** para cargar, cambiar o eliminar el contenido del bucket.
@@ -34,26 +32,6 @@ Al final de este laboratorio, podrá hacer lo siguiente:
 ## Duración
 
 El tiempo estimado para completar este laboratorio es de **90 minutos**.
-
-
-
-## Acceso a la Consola de administración de AWS
-
-1. En la parte superior de estas instrucciones, elija <span id="ssb_voc_grey">Start Lab</span> (Comenzar laboratorio) para iniciar el laboratorio.
-
-   Se abrirá el panel **Start Lab** (Comenzar laboratorio), donde se muestra el estado del laboratorio.
-
-2. Espere hasta que aparezca el mensaje “Lab status: ready” (Estado de la sesión de laboratorio: listo) y, a continuación, elija la **X** para cerrar el panel **Start Lab** (Comenzar laboratorio).
-
-3. En la parte superior de estas instrucciones, seleccione <span id="ssb_voc_grey">AWS</span> para abrir la Consola de administración de AWS en una pestaña nueva del navegador. El sistema iniciará la sesión de forma automática.
-
-   **Sugerencia** Si no se abre una pestaña nueva del navegador, suele aparecer un anuncio o un ícono en la parte superior de este con un mensaje que indica que el navegador impide que el sitio web abra ventanas emergentes. Seleccione el anuncio o ícono y elija **Permitir ventanas emergentes**.
-
-4. Ubique la pestaña de la Consola de administración de AWS de modo que aparezca al lado de estas instrucciones. Lo ideal sería que pudiera ver ambas pestañas del navegador al mismo tiempo para seguir los pasos del laboratorio.
-
-5. Arriba de estas instrucciones, seleccione <span id="ssb_voc_grey">Details</span> (Detalles) y, a continuación, elija <span id="ssb_voc_grey">Show</span> (Mostrar). 
-
-6. Copie los valores de **AccessKey** y **SecretKey** desde el panel **Credenciales** y péguelos en un editor de texto. Utilizará estos valores durante todo el laboratorio. Después de copiar y pegar los valores, seleccione la **X** para cerrar el panel **Credentials** (Credenciales).
 
 
 
@@ -533,11 +511,3 @@ En esta tarea, deberá probar la configuración de la notificación de eventos d
 
 - [Documentación de la AWS CLI para s3](https://docs.aws.amazon.com/cli/latest/reference/s3/)
 - [Documentación de la AWS CLI para s3api](https://docs.aws.amazon.com/cli/latest/reference/s3api/)
-
-Para obtener más información sobre AWS Training and Certification, consulte [AWS Training and Certification](http://aws.amazon.com/training/).
-
-*Sus comentarios son bienvenidos y valorados.*
-
-Si desea compartir alguna sugerencia o corrección, ingrese los detalles en el [Formulario de contacto de AWS Training and Certification](https://support.aws.amazon.com/#/contacts/aws-training).
-
-_© 2023, Amazon Web Services, Inc. o sus filiales. Todos los derechos reservados. Este contenido no puede reproducirse ni redistribuirse, total ni parcialmente, sin el permiso previo por escrito de Amazon Web Services, Inc. Queda prohibida la copia, el préstamo o la venta de carácter comercial._
