@@ -1,13 +1,13 @@
-# 📖 Laboratorio 1.1: Introducción a Amazon EC2
+# 📖 Trabajo con Amazon S3
 
 ## 🎯 Objetivo
-Introducción a la computación en la nube con Amazon Elastic Compute Cloud (EC2). Los estudiantes aprenderán a lanzar, configurar y gestionar instancias virtuales.
+Trabajar con AWS S3. Los estudiantes aprenderan a: Utilizar los comandos de AWS CLI s3api y s3 para crear y configurar un bucket de S3, verificar los permisos de escritura para un usuario en un bucket de S3, configurar las notificaciones de eventos en un bucket de S3.
 
 ## ⏱️ Duración
-45 minutos
+90 minutos
 
 ## 🛠️ Servicios AWS
-- Amazon EC2
+- Amazon EC2, Amazon S3
 
 ## 🎓 Objetivo de Certificación
 AWS Cloud Practitioner
@@ -21,7 +21,7 @@ Antes de comenzar el laboratorio, necesitas aprovisionar la infraestructura base
 ### 📋 Prerrequisitos
 - AWS CLI configurado
 - Permisos de CloudFormation en tu cuenta AWS
-- Key Pair existente en EC2 (opcional, según el template)
+- Key Pair existente en EC2 (según el template) llamada lab-key-pair
 
 ### 🔧 Script de Aprovisionamiento
 
@@ -29,7 +29,7 @@ Antes de comenzar el laboratorio, necesitas aprovisionar la infraestructura base
 #!/bin/bash
 # Script para aprovisionar infraestructura del laboratorio EC2
 
-STACK_NAME="lab-ec2-infrastructure"
+STACK_NAME="lab-s3-work"
 TEMPLATE_FILE="lab.template"
 REGION="us-east-1"
 
@@ -60,7 +60,7 @@ fi
 **1. Desplegar el stack:**
 ```bash
 aws cloudformation create-stack \
-  --stack-name lab-ec2-infrastructure \
+  --stack-name lab-s3-work \
   --template-body file://lab.template \
   --region us-east-1 \
   --capabilities CAPABILITY_IAM
@@ -69,7 +69,7 @@ aws cloudformation create-stack \
 **2. Verificar el estado del despliegue:**
 ```bash
 aws cloudformation describe-stacks \
-  --stack-name lab-ec2-infrastructure \
+  --stack-name lab-s3-work \
   --region us-east-1 \
   --query 'Stacks[0].StackStatus'
 ```
@@ -77,7 +77,7 @@ aws cloudformation describe-stacks \
 **3. Obtener los outputs del stack:**
 ```bash
 aws cloudformation describe-stacks \
-  --stack-name lab-ec2-infrastructure \
+  --stack-name lab-s3-work \
   --region us-east-1 \
   --query 'Stacks[0].Outputs'
 ```
@@ -85,7 +85,7 @@ aws cloudformation describe-stacks \
 **4. Limpiar recursos al finalizar:**
 ```bash
 aws cloudformation delete-stack \
-  --stack-name lab-ec2-infrastructure \
+  --stack-name lab-s3-work \
   --region us-east-1
 ```
 
@@ -103,7 +103,7 @@ Una vez aprovisionada la infraestructura, continúa con el laboratorio:
 
 | Anterior | Inicio | Siguiente |
 |----------|--------|-----------|
-| [⬅️ Sesión 1](../README.md) | [🏠 Inicio](../../README.md) | [🔐 Lab 1.2: IAM ➡️](../introduccion-a-la-gestion-de-identidades-y-accesos-iam/README.md) |
+| [⬅️ Sesión 3](../README.md) | [🏠 Inicio](../../README.md) | [🔐 Instalar y configurar la AWS CLI ➡️](../instalar-y-configurar-la-aws-cli/README.md) |
 
 ---
 
