@@ -8,7 +8,7 @@ En este laboratorio, creará y configurará un bucket de Amazon Simple Storage S
 
 En el siguiente diagrama, se muestra la arquitectura de los componentes de la solución de uso compartido de archivos de Amazon S3 y se ilustra su flujo de uso.
 
-<img src="images/Architecture.png" alt="diagrama de la arquitectura" width="700">
+(images/activity-architecture-diagram.png)
 
 Previamente, se creó un usuario de AWS Identity and Access Management (AWS IAM), que se denominó mediacouser y que representa a un usuario externo de la empresa de medios con los permisos de Amazon S3 indicados que le permiten agregar, cambiar o eliminar imágenes del bucket. Los permisos de Amazon S3 necesarios se revisan por usuario, para garantizar que el acceso al bucket sea seguro y adecuado para cada rol.  
 
