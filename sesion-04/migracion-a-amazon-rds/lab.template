@@ -1,0 +1,514 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: VPC with an Amazon Linux LAMP instance in a public subnet
+Parameters:
+  VPCCIDR:
+    Description: CIDR Block for CafeVPC
+    Type: String
+    Default: 10.200.0.0/20
+    AllowedValues:
+      - 10.200.0.0/20
+  PublicSubnet1Param:
+    Description: Public Subnet 1
+    Type: String
+    Default: 10.200.0.0/24
+    AllowedValues:
+      - 10.200.0.0/24
+  KeyName:
+    Type: String
+    Description: Keyname for the keypair that Vocareum will use
+    Default: lab-key-pair
+
+  LatestAmiId:
+    Type: 'AWS::SSM::Parameter::Value<AWS::EC2::Image::Id>'
+    Default: /aws/service/ami-amazon-linux-latest/amzn2-ami-hvm-x86_64-gp2
+Resources:
+  VPC:
+    Type: 'AWS::EC2::VPC'
+    Properties:
+      CidrBlock: !Ref VPCCIDR
+      EnableDnsHostnames: 'true'
+      Tags:
+        - Key: VPC
+          Value: Cafe
+        - Key: Name
+          Value: Cafe VPC
+  InternetGateway:
+    Type: 'AWS::EC2::InternetGateway'
+    DependsOn: VPC
+  AttachGateway:
+    Type: 'AWS::EC2::VPCGatewayAttachment'
+    DependsOn:
+      - VPC
+      - InternetGateway
+    Properties:
+      VpcId: !Ref VPC
+      InternetGatewayId: !Ref InternetGateway
+  PublicSubnet1:
+    Type: 'AWS::EC2::Subnet'
+    DependsOn: VPC
+    Properties:
+      VpcId: !Ref VPC
+      CidrBlock: !Ref PublicSubnet1Param
+      AvailabilityZone: !Select
+        - '0'
+        - !GetAZs ''
+      MapPublicIpOnLaunch: 'true'
+      Tags:
+        - Key: Name
+          Value: Cafe Public Subnet 1
+  PublicRouteTable:
+    Type: 'AWS::EC2::RouteTable'
+    DependsOn:
+      - VPC
+      - AttachGateway
+    Properties:
+      VpcId: !Ref VPC
+      Tags:
+        - Key: Name
+          Value: Public Route Table
+  PublicRoute:
+    Type: 'AWS::EC2::Route'
+    DependsOn:
+      - VPC
+      - PublicRouteTable
+      - InternetGateway
+      - AttachGateway
+    Properties:
+      RouteTableId: !Ref PublicRouteTable
+      DestinationCidrBlock: 0.0.0.0/0
+      GatewayId: !Ref InternetGateway
+  PublicSubnet1RouteTableAssociation:
+    Type: 'AWS::EC2::SubnetRouteTableAssociation'
+    DependsOn:
+      - PublicRouteTable
+      - PublicSubnet1
+    Properties:
+      SubnetId: !Ref PublicSubnet1
+      RouteTableId: !Ref PublicRouteTable
+  CafeInstance:
+    Type: 'AWS::EC2::Instance'
+    DependsOn:
+      - VPC
+      - CafeSecurityGroup
+      - PublicSubnet1
+    Properties:
+      ImageId: !Ref LatestAmiId
+      KeyName: !Ref KeyName
+      IamInstanceProfile: !Ref CafeInstanceProfile
+      InstanceType: t3.small
+      NetworkInterfaces:
+        - DeviceIndex: '0'
+          AssociatePublicIpAddress: 'true'
+          SubnetId: !Ref PublicSubnet1
+          GroupSet:
+            - !Ref CafeSecurityGroup
+      SourceDestCheck: 'false'
+      Tags:
+        - Key: Name
+          Value: CafeInstance
+      UserData: !Base64
+        'Fn::Join':
+          - ''
+          - - |
+              #!/bin/bash -ex
+            - |
+              yum -y update
+            - |
+              amazon-linux-extras install -y lamp-mariadb10.2-php7.2 php7.2
+            - |
+              yum -y install httpd mariadb-server wget
+            - |
+              systemctl enable httpd
+            - |
+              systemctl start httpd
+            - |
+              systemctl enable mariadb
+            - |
+              systemctl start mariadb
+            - >
+              echo '<html><h1>Hello From Your Web Server!</h1></html>' >
+              /var/www/html/index.html
+            - |
+              find /var/www -type d -exec chmod 2775 {} \;
+            - |
+              find /var/www -type f -exec chmod 0664 {} \;
+            - |
+              echo "<?php phpinfo(); ?>" > /var/www/html/phpinfo.php
+            - |
+              usermod -a -G apache ec2-user
+            - |
+              chown -R ec2-user:apache /var/www
+            - |
+              chmod 2775 /var/www
+            - >
+              wget
+              https://aws-tc-largeobjects.s3.us-west-2.amazonaws.com/CUR-TF-100-RSJAWS-1-23732/179-activity-JAWS-migrate-rds/s3/setup-v2.tar.gz
+            - |
+              tar -zxvf setup-v2.tar.gz
+            - >
+              wget
+              https://aws-tc-largeobjects.s3.us-west-2.amazonaws.com/CUR-TF-100-RSJAWS-1-23732/179-activity-JAWS-migrate-rds/s3/db-v2.tar.gz
+            - |
+              tar -zxvf db-v2.tar.gz
+            - >
+              wget
+              https://aws-tc-largeobjects.s3.us-west-2.amazonaws.com/CUR-TF-100-RSJAWS-1-23732/179-activity-JAWS-migrate-rds/s3/cafe-v2.tar.gz
+            - |
+              tar -zxvf cafe-v2.tar.gz -C /var/www/html/
+            - |
+              cd setup
+            - |
+              ./set-app-parameters.sh
+            - |
+              cd ../db/
+            - |
+              ./set-root-password.sh
+            - |
+              ./create-db.sh
+  CafeIamPolicy:
+    Type: 'AWS::IAM::Policy'
+    Properties:
+      PolicyName: FullSsmAccess
+      PolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Action:
+              - 'ssm:*'
+            Resource: '*'
+      Roles:
+        - !Ref CafeIamRole
+  CafeIamRole:
+    Type: 'AWS::IAM::Role'
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - ec2.amazonaws.com
+            Action:
+              - 'sts:AssumeRole'
+      Path: /
+  CafeInstanceProfile:
+    Type: 'AWS::IAM::InstanceProfile'
+    DependsOn:
+      - CafeIamRole
+    Properties:
+      Path: /
+      Roles:
+        - !Ref CafeIamRole
+  CafeSecurityGroup:
+    Type: 'AWS::EC2::SecurityGroup'
+    DependsOn: VPC
+    Properties:
+      GroupDescription: Security group for the Cafe instance
+      VpcId: !Ref VPC
+      Tags:
+        - Key: Name
+          Value: CafeSecurityGroup
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: '22'
+          ToPort: '22'
+          CidrIp: 0.0.0.0/0
+        - IpProtocol: tcp
+          FromPort: '80'
+          ToPort: '80'
+          CidrIp: 0.0.0.0/0
+      SecurityGroupEgress:
+        - IpProtocol: '-1'
+          FromPort: '0'
+          ToPort: '65535'
+          CidrIp: 0.0.0.0/0
+  CliHostInstance:
+    Type: 'AWS::EC2::Instance'
+    DependsOn:
+      - VPC
+      - CliHostInstanceSG
+      - PublicSubnet1
+    Properties:
+      ImageId: !Ref LatestAmiId
+      KeyName: !Ref KeyName
+      InstanceType: t3.micro
+      NetworkInterfaces:
+        - DeviceIndex: '0'
+          AssociatePublicIpAddress: 'true'
+          SubnetId: !Ref PublicSubnet1
+          GroupSet:
+            - !Ref CliHostInstanceSG
+      SourceDestCheck: 'false'
+      Tags:
+        - Key: Name
+          Value: CLI Host
+      UserData: !Base64
+        'Fn::Join':
+          - ''
+          - - |
+              #!/bin/bash -ex
+            - |
+              yum -y update
+            - |
+              yum install -y wget
+            - |
+              mkdir /home/ec2-user/activity-files
+            - |
+              chown ec2-user:ec2-user /home/ec2-user/activity-files
+  CliHostInstanceSG:
+    Type: 'AWS::EC2::SecurityGroup'
+    DependsOn: VPC
+    Properties:
+      GroupDescription: Security group for the CLI Host Linux instance
+      VpcId: !Ref VPC
+      Tags:
+        - Key: Name
+          Value: CLI Host SG
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: '22'
+          ToPort: '22'
+          CidrIp: 0.0.0.0/0
+      SecurityGroupEgress:
+        - IpProtocol: '-1'
+          FromPort: '0'
+          ToPort: '65535'
+          CidrIp: 0.0.0.0/0
+  IAMUser:
+    Type: 'AWS::IAM::User'
+    Properties:
+      UserName: awsstudent
+  IAMPolicy:
+    Type: 'AWS::IAM::ManagedPolicy'
+    DependsOn: IAMUser
+    Properties:
+      PolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Sid: AllowAllActions
+            Effect: Allow
+            Action:
+              - 'cloudformation:List*'
+              - 'cloudformation:Describe*'
+              - 'cloudformation:Detect*'
+              - 'cloudformation:EstimateTemplateCost'
+              - 'cloudformation:Get*'
+              - 'cloudwatch:*'
+              - 'ec2:*Address*'
+              - 'ec2:*associate*'
+              - 'ec2:AttachVolume'
+              - 'ec2:BundleInstance'
+              - 'ec2:Cancel*'
+              - 'ec2:*Capacity*'
+              - 'ec2:CreateInstanceExportTask'
+              - 'ec2:CreateFlowLogs'
+              - 'ec2:*Credit*'
+              - 'ec2:*Cidr'
+              - 'ec2:Delete*'
+              - 'ec2:Describe*'
+              - 'ec2:DetachVolume'
+              - 'ec2:*Dhcp*'
+              - 'ec2:*Ebs*'
+              - 'ec2:*Event*'
+              - 'ec2:*Fleet*'
+              - 'ec2:*Format'
+              - 'ec2:*Gateway*'
+              - 'ec2:Get*'
+              - 'ec2:*InstanceAttribute'
+              - 'ec2:*InternetGateway'
+              - 'ec2:*Image*'
+              - 'ec2:*KeyPair'
+              - 'ec2:*Kms*'
+              - 'ec2:*monitor*'
+              - 'ec2:*Network*'
+              - 'ec2:*Options'
+              - 'ec2:*PrefixList*'
+              - 'ec2:ReportInstanceStatus'
+              - 'ec2:RebootInstances'
+              - 'ec2:ReplaceIamInstanceProfileAssociation'
+              - 'ec2:*Route*'
+              - 'ec2:*SecurityGroup*'
+              - 'ec2:Search*'
+              - 'ec2:SendDiagnosticInterrupt'
+              - 'ec2:StopInstances'
+              - 'ec2:*Snapshot*'
+              - 'ec2:*Subnet*'
+              - 'ec2:*Tag*'
+              - 'ec2:TerminateInstances'
+              - 'ec2:*Traffic*'
+              - 'ec2:*Vpn*'
+              - 'ec2:*Vpc*'
+              - 'events:*'
+              - 'iam:List*'
+              - 'iam:Get*'
+              - 'kms:List*'
+              - 'kms:Describe*'
+              - 'logs:*'
+              - 'rds:Delete*'
+              - 'rds:*ParameterGroup'
+              - 'rds:Describe*'
+              - 'rds:*DBSubnetGroup'
+              - 'rds:DownloadDBLogFilePortion'
+              - 'rds:AddRoleToDBCluster'
+              - 'rds:*Snapshot'
+              - 'rds:*SecurityGroup*'
+              - 'rds:CreateEventSubscription'
+              - 'rds:FailoverDBCluster'
+              - 'rds:AddRoleToDBInstance'
+              - 'rds:*Tags*'
+              - 'rds:ModifyEventSubscription'
+              - 'rds:ApplyPendingMaintenanceAction'
+              - 'rds:BacktrackDBCluster'
+              - 'rds:Remove*'
+              - 'rds:*OptionGroup'
+              - 'rds:AddSourceIdentifierToSubscription'
+              - 'rds:CreateDBClusterEndpoint'
+              - 'rds:StopDBCluster'
+              - 'rds:PromoteReadReplica'
+              - 'rds:StopActivityStream'
+              - 'rds:StartActivityStream'
+              - 'rds:RestoreDBClusterToPointInTime'
+              - 'rds:StopDBInstance'
+              - 'rds:DownloadCompleteDBLogFile'
+              - 'resource-groups:Get*'
+              - 'resource-groups:List*'
+              - 'resource-groups:SearchResources'
+              - 'ssm:List*'
+              - 'ssm:Describe*'
+              - 'ssm:Get*'
+              - 'ssm:PutInventory'
+              - 'ssm:PutComplianceItems'
+              - 'ssm:PutConfigurePackageResult'
+              - 'ssm:UpdateAssociationStatus'
+              - 'ssm:UpdateInstanceAssociationStatus'
+              - 'ssm:UpdateInstanceInformation'
+              - 'ssm:CancelCommand'
+              - 'ssm:SendCommand'
+              - 'ssm:StartAutomationExecution'
+              - 'ssm:StartSession'
+              - 'ssm:TerminateSession'
+              - 'ssm:ResumeSession'
+              - 'ssm:DescribeSessions'
+              - 'ssm:GetConnectionStatus'
+              - 'ssm:PutParameter'
+              - 'sns:*'
+              - 'tag:*'
+            Resource: '*'
+          - Sid: RestrictInstanceActions
+            Effect: Allow
+            Action:
+              - 'ec2:CreateVolume'
+              - 'ec2:EnableVolumeIO'
+              - 'ec2:ImportVolume'
+              - 'ec2:ImportSnapshot'
+              - 'ec2:ImportInstance'
+              - 'ec2:*LaunchTemplate*'
+              - 'ec2:ModifyVolume*'
+              - 'ec2:RunInstances'
+              - 'ec2:StartInstances'
+            Resource: '*'
+            Condition:
+              StringEqualsIfExists:
+                'ec2:Owner': amazon
+              'ForAllValues:StringLikeIfExists':
+                'ec2:InstanceType':
+                  - '*.nano'
+                  - '*.micro'
+                  - '*.small'
+                'ec2:Tenancy': default
+              StringNotEqualsIfExists:
+                'ec2:PlacementGroupStrategy': cluster
+              StringNotEqualsIgnoreCaseIfExists:
+                'ec2:VolumeType':
+                  - io1
+                  - st1
+              NumericLessThanEqualsIfExists:
+                'ec2:VolumeSize': '101'
+          - Sid: RestrictActions
+            Effect: Deny
+            Action:
+              - 'ec2:*Spot*'
+              - 'ec2:*ReservedInstances*'
+              - 'ec2:*Scheduled*'
+              - 'ec2:*Purchase*'
+              - 'ec2:EnableFastSnapshotRestores'
+              - 'rds:*Purchase*'
+              - 'ec2:*Fpga*'
+              - 'ec2:*Purchase*'
+              - 'ec2:AcceptVpcEndpointConnections'
+              - 'ec2:AttachVpnGateway'
+              - 'ec2:CreateCapacityReservation'
+              - 'ec2:CreateVpnGateway'
+            Resource: '*'
+          - Sid: RestrictRDSActivity
+            Effect: Allow
+            Action:
+              - 'rds:CreateDBInstance'
+              - 'rds:CreateDBInstanceReadReplica'
+              - 'rds:StartDBInstance'
+              - 'rds:ModifyDBInstance'
+              - 'rds:RebootDBInstance'
+            Resource: '*'
+            Condition:
+              'ForAnyValue:StringLikeIfExists':
+                'rds:DatabaseEngine':
+                  - mariadb
+                'rds:DatabaseClass':
+                  - '*.nano'
+                  - '*.micro'
+                  - '*.small'
+              NumericLessThanIfExists:
+                'rds:StorageSize': '101'
+              NumericEqualsIfExists:
+                'rds:Piops': '0'
+              BoolIfExists:
+                'rds:MultiAz':
+                  - false
+          - Sid: PassRoleAndPolicies
+            Effect: Allow
+            Action:
+              - 'iam:PassRole'
+            Resource: '*'
+            Condition:
+              StringLikeIfExists:
+                'iam:PassedToService':
+                  - rds.amazonaws.com
+                  - ec2.amazonaws.com
+                  - ssm.amazonaws.com
+          - Sid: AllowServiceLinkedRoleCreation
+            Effect: Allow
+            Action:
+              - 'iam:CreateServiceLinkedRole'
+            Resource: 'arn:aws:iam::*:role/aws-service-role/*'
+            Condition:
+              StringLikeIfExists:
+                'iam:AWSServiceName':
+                  - rds.amazonaws.com
+      ManagedPolicyName: lab_policy
+      Users:
+        - awsstudent
+  IAMUserAccessKey:
+    Type: 'AWS::IAM::AccessKey'
+    DependsOn: IAMUser
+    Properties:
+      Status: Active
+      UserName: awsstudent
+Outputs:
+  LabRegion:
+    Value: !Ref 'AWS::Region'
+  AccessKey:
+    Value: !Ref IAMUserAccessKey
+  SecretKey:
+    Value: !GetAtt
+      - IAMUserAccessKey
+      - SecretAccessKey
+  CafeVpcID:
+    Value: !Ref VPC
+  CafeInstancePublicDNS:
+    Value: !GetAtt CafeInstance.PublicDnsName
+  CafeInstanceURL:
+      Value: !Join [ "/", [!GetAtt [CafeInstance,PublicIp] , 'cafe']]
+  CafeSecurityGroupID:
+    Value: !Ref CafeSecurityGroup
+  CafeInstanceAZ:
+    Value: !GetAtt CafeInstance.AvailabilityZone
