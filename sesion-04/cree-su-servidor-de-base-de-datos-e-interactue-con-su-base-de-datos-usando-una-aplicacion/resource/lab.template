@@ -1,0 +1,519 @@
+AWSTemplateFormatVersion: 2010-09-09
+
+Parameters:
+
+  AWSStudentPassword:
+    Description: "User awsstudent password."
+    Type: String
+    Default: Passw0rd12!
+  
+  KeyName:
+    Type: String
+    Description: Key used by WebServer.
+    Default: lab-key-pair
+
+  AmazonLinuxAMIID:
+    Type: AWS::SSM::Parameter::Value<AWS::EC2::Image::Id>
+    Default: /aws/service/ami-amazon-linux-latest/amzn2-ami-hvm-x86_64-gp2
+
+Resources:
+
+  VPC:
+    Type: 'AWS::EC2::VPC'
+    Properties:
+      CidrBlock: 10.0.0.0/16
+      Tags:
+        - Key: Name
+          Value: Lab VPC
+
+  InternetGateway:
+    Type: 'AWS::EC2::InternetGateway'
+
+  AttachGateway:
+    Type: 'AWS::EC2::VPCGatewayAttachment'
+    Properties:
+      VpcId: !Ref VPC
+      InternetGatewayId: !Ref InternetGateway
+
+  PublicSubnet1:
+    DependsOn: AttachGateway
+    Type: 'AWS::EC2::Subnet'
+    Properties:
+      VpcId: !Ref VPC
+      CidrBlock: 10.0.0.0/24
+      AvailabilityZone: !Select
+        - '0'
+        - !GetAZs ''
+      Tags:
+        - Key: Name
+          Value: Public Subnet 1
+
+  PublicSubnet2:
+    DependsOn: AttachGateway
+    Type: 'AWS::EC2::Subnet'
+    Properties:
+      VpcId: !Ref VPC
+      CidrBlock: 10.0.2.0/24
+      AvailabilityZone: !Select
+        - '1'
+        - !GetAZs ''
+      Tags:
+        - Key: Name
+          Value: Public Subnet 2
+
+  PrivateSubnet1:
+    Type: 'AWS::EC2::Subnet'
+    Properties:
+      VpcId: !Ref VPC
+      CidrBlock: 10.0.1.0/24
+      AvailabilityZone: !Select
+        - '0'
+        - !GetAZs ''
+      Tags:
+        - Key: Name
+          Value: Private Subnet 1
+
+  PrivateSubnet2:
+    Type: 'AWS::EC2::Subnet'
+    Properties:
+      VpcId: !Ref VPC
+      CidrBlock: 10.0.3.0/24
+      AvailabilityZone: !Select
+        - '1'
+        - !GetAZs ''
+      Tags:
+        - Key: Name
+          Value: Private Subnet 2
+
+  PublicRouteTable:
+    DependsOn: [
+      PublicSubnet1,
+      PublicSubnet2
+    ]
+    Type: 'AWS::EC2::RouteTable'
+    Properties:
+      VpcId: !Ref VPC
+      Tags:
+        - Key: Name
+          Value: Public Route Table
+
+  PublicRoute:
+    Type: 'AWS::EC2::Route'
+    Properties:
+      RouteTableId: !Ref PublicRouteTable
+      DestinationCidrBlock: 0.0.0.0/0
+      GatewayId: !Ref InternetGateway
+
+  PublicSubnet1RouteTableAssociation:
+    DependsOn: PublicRoute
+    Type: 'AWS::EC2::SubnetRouteTableAssociation'
+    Properties:
+      SubnetId: !Ref PublicSubnet1
+      RouteTableId: !Ref PublicRouteTable
+
+  PublicSubnet2RouteTableAssociation:
+    DependsOn: PublicRoute
+    Type: 'AWS::EC2::SubnetRouteTableAssociation'
+    Properties:
+      SubnetId: !Ref PublicSubnet2
+      RouteTableId: !Ref PublicRouteTable
+
+  PrivateRouteTable:
+    Type: 'AWS::EC2::RouteTable'
+    Properties:
+      VpcId: !Ref VPC
+      Tags:
+        - Key: Name
+          Value: Private Route Table
+
+  PrivateSubnet1RouteTableAssociation:
+    Type: 'AWS::EC2::SubnetRouteTableAssociation'
+    Properties:
+      SubnetId: !Ref PrivateSubnet1
+      RouteTableId: !Ref PrivateRouteTable
+
+  PrivateSubnet2RouteTableAssociation:
+    Type: 'AWS::EC2::SubnetRouteTableAssociation'
+    Properties:
+      SubnetId: !Ref PrivateSubnet2
+      RouteTableId: !Ref PrivateRouteTable
+
+  WebInstance:
+    DependsOn: [
+      PublicSubnet1RouteTableAssociation,
+      PublicSubnet1RouteTableAssociation
+    ]
+    Type: 'AWS::EC2::Instance'
+    Properties:
+      ImageId: !Ref AmazonLinuxAMIID
+      KeyName: !Ref KeyName
+      InstanceType: t3.micro
+      NetworkInterfaces:
+        - DeviceIndex: '0'
+          AssociatePublicIpAddress: true
+          SubnetId: !Ref PublicSubnet2
+          GroupSet:
+            - !Ref WebSecurityGroup
+      SourceDestCheck: false
+      Tags:
+        - Key: Name
+          Value: Web Server 1
+      UserData:
+        Fn::Base64: !Sub |
+          #!/bin/bash -ex
+          # Updated to use Amazon Linux 2
+          yum -y update
+          yum -y install httpd php mysql php-mysql
+          amazon-linux-extras install -y lamp-mariadb10.2-php7.2 php7.2
+          yum install -y httpd mariadb-server
+          /usr/bin/systemctl enable httpd
+          /usr/bin/systemctl start httpd
+          cd /var/www/html
+          #wget https://aws-tc-largeobjects.s3.amazonaws.com/ILT-TF-100-TUFOUN-1/5-lab-database-server/lab-app-php7.zip
+          wget https://aws-tc-largeobjects.s3.us-west-2.amazonaws.com/CUR-TF-100-RSDBAS-3-124627/160-lab-DF-database-server/s3/lab-app-php7.zip
+          unzip lab-app-php7.zip -d /var/www/html/
+          chown apache:root /var/www/html/rds.conf.php
+
+  WebSecurityGroup:
+    Type: 'AWS::EC2::SecurityGroup'
+    Properties:
+      GroupDescription: Enable HTTP access
+      GroupName: Web Security Group
+      VpcId: !Ref VPC
+      Tags:
+        - Key: Name
+          Value: Web Security Group
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIp: 0.0.0.0/0
+        - IpProtocol: tcp
+          FromPort: 22
+          ToPort: 22
+          CidrIp: 0.0.0.0/0
+
+  # NAT Gateway
+
+  NATGateway:
+    Type: AWS::EC2::NatGateway
+    Properties:
+      SubnetId: !Ref PublicSubnet1
+      AllocationId: !GetAtt
+        - NATGatewayEIP
+        - AllocationId
+
+  NATGatewayEIP:
+    Type: AWS::EC2::EIP
+    Properties:
+      Domain: vpc
+
+  NATGatewayRoute:
+    Type: AWS::EC2::Route
+    Properties:
+      RouteTableId:
+        Ref: PrivateRouteTable
+      DestinationCidrBlock: 0.0.0.0/0
+      NatGatewayId:
+        Ref: NATGateway
+
+  EnhancedMonitoringRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          Effect: Allow
+          Principal:
+            Service: monitoring.rds.amazonaws.com
+          Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AmazonRDSEnhancedMonitoringRole
+      Path: "/"
+
+  IAMUser:
+    Type: 'AWS::IAM::User'
+    Properties:
+      UserName: awsstudent
+      LoginProfile:
+        Password: !Ref AWSStudentPassword
+      ManagedPolicyArns: 
+        - arn:aws:iam::aws:policy/ReadOnlyAccess
+
+  IAMPolicy:
+    Type: 'AWS::IAM::ManagedPolicy'
+    DependsOn: IAMUser
+    Properties:
+      Description: "Define user policy."
+      ManagedPolicyName: lab_policy
+      PolicyDocument:
+        Version: 2012-10-17
+        Statement: [{
+            "Sid": "AllowActions",
+            "Action": [
+                "cloudformation:List*",
+                "cloudformation:Describe*",
+                "cloudformation:Detect*",
+                "cloudformation:Estimate*",
+                "cloudformation:Get*",
+                "iam:Get*",
+                "iam:List*",
+                "cloudwatch:List*",
+                "cloudwatch:Describe*",
+                "cloudwatch:Get*",
+                "ec2:*Address*",
+                "ec2:Cancel*",
+                "ec2:Describe*",
+                "ec2:*Gateway",
+                "ec2:Get*",
+                "ec2:*Image*",
+                "ec2:*Network*",
+                "ec2:*Route*",
+                "ec2:*SecurityGroup*",
+                "ec2:*Snapshot*",
+                "ec2:*Subnet*",
+                "ec2:*Vpc*",
+                "ec2:*Vpn*",
+                "ec2:DeleteFleets",
+                "ec2:ResetEbsDefaultKmsKeyId",
+                "ec2:ReportInstanceStatus",
+                "ec2:ImportKeyPair",
+                "ec2:StopInstances",
+                "ec2:ProvisionByoipCidr",
+                "ec2:WithdrawByoipCidr",
+                "ec2:AssociateDhcpOptions",
+                "ec2:ConfirmProductInstance",
+                "ec2:ConfirmProductInstance",
+                "ec2:ModifyFpgaImageAttribute",
+                "ec2:EnableEbsEncryptionByDefault",
+                "ec2:SendDiagnosticInterrupt",
+                "ec2:AssociateIamInstanceProfile",
+                "ec2:ReplaceIamInstanceProfileAssociation",
+                "ec2:CreateDhcpOptions",
+                "ec2:DeleteDhcpOptions",
+                "ec2:CreateKeyPair",
+                "ec2:DeleteKeyPair",
+                "ec2:BundleInstance",
+                "ec2:CreateTags",
+                "ec2:DisassociateIamInstanceProfile",
+                "ec2:AttachVolume",
+                "ec2:CreateInstanceExportTask",
+                "ec2:MonitorInstances",
+                "ec2:UnmonitorInstances",
+                "ec2:DetachVolume",
+                "ec2:DeleteVolume",
+                "ec2:DeleteLaunchTemplate*",
+                "ec2:CreateFlowLogs",
+                "ec2:DeleteFlowLogs",
+                "ec2:ModifyIdentityIdFormat",
+                "ec2:ModifyIdFormat",
+                "ec2:AdvertiseByoipCidr",
+                "ec2:DeprovisionByoipCidr",
+                "ec2:DeleteTags",
+                "ec2:TerminateInstances",
+                "ec2:DisableEbsEncryptionByDefault",
+                "ec2:ModifyEbsDefaultKmsKeyId",
+                "rds:CreateDBInstance",
+                "rds:Delete*",
+                "rds:*ParameterGroup",
+                "rds:Describe*",
+                "rds:*DBSubnetGroup",
+                "rds:DownloadDBLogFilePortion",
+                "rds:AddRoleToDBCluster",
+                "rds:*Snapshot",
+                "rds:*SecurityGroup*",
+                "rds:CreateEventSubscription",
+                "rds:FailoverDBCluster",
+                "rds:AddRoleToDBInstance",
+                "rds:*Tags*",
+                "rds:ModifyEventSubscription",
+                "rds:ApplyPendingMaintenanceAction",
+                "rds:BacktrackDBCluster",
+                "rds:Remove*",
+                "rds:*OptionGroup",
+                "rds:AddSourceIdentifierToSubscription",
+                "rds:CreateDBClusterEndpoint",
+                "rds:StopDBCluster",
+                "rds:PromoteReadReplica",
+                "rds:StopActivityStream",
+                "rds:StartActivityStream",
+                "rds:RestoreDBClusterToPointInTime",
+                "rds:StopDBInstance",
+                "rds:DownloadCompleteDBLogFile",
+                "cloudtrail:GetTrailStatus",
+                "cloudtrail:DescribeTrails",
+                "cloudtrail:LookupEvents",
+                "cloudtrail:ListTags",
+                "cloudtrail:ListPublicKeys",
+                "cloudtrail:GetEventSelectors",
+                "s3:ListAllMyBuckets",
+                "s3:GetObject",
+                "s3:GetBucketLocation",
+                "kms:ListAliases",
+                "lambda:ListFunctions"
+            ],
+            "Effect": "Allow",
+            "Resource": "*"
+          },
+          {
+            "Sid": "RestrictInstanceActions",
+            "Effect": "Allow",
+            "Action": [
+                "ec2:CreateVolume",
+                "ec2:ModifyVolume",
+                "ec2:ImportVolume",
+                "ec2:ModifyVolumeAttribute",
+                "ec2:ModifyFleet",
+                "ec2:ImportSnapshot",
+                "ec2:ResetInstanceAttribute",
+                "ec2:CreateFleet",
+                "ec2:CreateLaunchTemplateVersion",
+                "ec2:EnableVolumeIO",
+                "ec2:CreateLaunchTemplate",
+                "ec2:ImportInstance",
+                "ec2:ModifyInstanceCreditSpecification",
+                "ec2:ModifyLaunchTemplate",
+                "ec2:ModifyInstanceAttribute",
+                "ec2:RebootInstances",
+                "ec2:RunInstances",
+                "ec2:StartInstances"
+            ],
+            "Resource": "*",
+            "Condition": {
+                "StringEqualsIfExists": {
+                    "ec2:Owner": "amazon"
+                },
+                "ForAllValues:StringLikeIfExists": {
+                    "ec2:InstanceType": [
+                        "*.nano",
+                        "*.micro",
+                        "*.small"
+                    ],
+                    "ec2:Tenancy": "default"
+                },
+                "StringNotEqualsIfExists": {
+                    "ec2:PlacementGroupStrategy": "cluster"
+                },
+                "StringNotEqualsIgnoreCaseIfExists": {
+                    "ec2:VolumeType": [
+                        "io1",
+                        "st1"
+                    ]
+                },
+                "NumericLessThanEqualsIfExists": {
+                    "ec2:VolumeSize": "51"
+                }
+            }
+          },
+          {
+            "Sid": "RestrictActions",
+            "Effect": "Deny",
+            "Action": [
+                "ec2:*Spot*",
+                "ec2:*ReservedInstances*",
+                "ec2:*Scheduled*",
+                "ec2:*Purchase*",
+                "ec2:EnableFastSnapshotRestores",
+                "rds:PurchaseReservedDBInstancesOffering"
+            ],
+            "Resource": "*"
+          },
+          {
+            "Sid": "RestrictRDSActivity",
+            "Effect": "Allow",
+            "Action": [
+                "rds:CreateDBInstance",
+                "rds:CreateDBInstanceReadReplica",
+                "rds:StartDBInstance",
+                "rds:ModifyDBInstance",
+                "rds:RebootDBInstance",
+                "rds:RestoreDBInstanceFromDBSnapshot",
+                "rds:RestoreDBInstanceFromS3",
+                "rds:RestoreDBInstanceToPointInTime",
+                "rds:CreateDBCluster",
+                "rds:StartDBCluster",
+                "rds:ModifyDBCluster",
+                "rds:CreateGlobalCluster",
+                "rds:ModifyDBClusterEndpoint",
+                "rds:ModifyGlobalCluster",
+                "rds:RestoreDBClusterFromS3",
+                "rds:RestoreDBClusterFromSnapshot",
+                "rds:ModifyCurrentDBClusterCapacity",
+                "rds:PromoteReadReplicaDBCluster"
+            ],
+            "Resource": "*",
+            "Condition": {
+                "ForAnyValue:StringLikeIfExists": {
+                    "rds:DatabaseEngine": [
+                        "aurora-mysql",
+                        "aurora-postgresql",
+                        "mysql",
+                        "postgres",
+                        "mariadb"
+                    ],
+                    "rds:DatabaseClass": [
+                        "*.nano",
+                        "*.micro",
+                        "*.small",
+                        "*.medium"
+                    ]
+                },
+                "NumericLessThanIfExists": {
+                    "rds:StorageSize": "101"
+                },
+                "NumericEqualsIfExists": {
+                    "rds:Piops": "0"
+                }
+            }
+          },
+          {
+            "Sid": "ServiceLinkedRoleAndPolicies",
+            "Effect": "Allow",
+            "Action": [
+                "iam:AttachRolePolicy",
+                "iam:CreateInstanceProfile",
+                "iam:CreateServiceLinkedRole",
+                "iam:DetachRolePolicy",
+                "iam:PassRole"
+            ],
+            "Resource": "*",
+            "Condition": {
+                "StringLikeIfExists": {
+                    "iam:AWSServiceName": [
+                        "elasticloadbalancing.amazonaws.com",
+                        "autoscaling.amazonaws.com",
+                        "rds.amazonaws.com",
+                        "lambda.amazonaws.com",
+                        "ec2.amazonaws.com"
+                    ]
+                }
+            }
+          }]
+      Users:
+        - awsstudent
+  
+  IAMUserAccessKey:
+    Type: 'AWS::IAM::AccessKey'
+    DependsOn: IAMUser
+    Properties:
+      Status: Active
+      UserName: awsstudent
+
+Outputs:
+  WebServer:
+    Value: !GetAtt
+      - WebInstance
+      - PublicIp
+    Description: Public IP address of Web Server
+
+  awsstudentAccessSecretKey:
+    Description: "Lab access and secret key."
+    Value: !Join
+      - ''
+      - - "Access Key: "
+        - !Ref IAMUserAccessKey
+        - |+
+        - "Secret Access Key: "
+        - !GetAtt 
+          - IAMUserAccessKey
+          - SecretAccessKey
