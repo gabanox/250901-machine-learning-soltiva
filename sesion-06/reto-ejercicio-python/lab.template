@@ -1,0 +1,267 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'Challenge Lab: Python Scripting'
+Parameters:
+  KeyName:
+    Description: Name of an existing EC2 KeyPair
+    Type: String
+  PublicSubnet1Param:
+    Description: Public Subnet 1
+    Type: String
+    Default: 10.1.11.0/24
+    AllowedValues:
+      - 10.1.11.0/24
+  VPCCIDR:
+    Description: CIDR Block for VPC
+    Type: String
+    Default: 10.1.0.0/16
+    AllowedValues:
+      - 10.1.0.0/16
+  InstanceType:
+    Default: t2.micro
+    Description: EC2 instance type, e.g. m1.small, m1.large, etc.
+    Type: String
+  AMZN2LinuxAMIId :
+    Type : AWS::SSM::Parameter::Value<AWS::EC2::Image::Id>
+    Default: /aws/service/ami-amazon-linux-latest/amzn2-ami-hvm-x86_64-gp2
+  UserPassword:
+    Description: "User password."
+    Type: String
+    Default: Passw0rd!!
+
+Resources:
+  VPC:
+    Type: AWS::EC2::VPC
+    Properties:
+      CidrBlock: !Ref 'VPCCIDR'
+      EnableDnsSupport: 'true'
+      EnableDnsHostnames: 'true'
+      Tags:
+        - Key: Name
+          Value: Lab VPC
+  InternetGateway:
+    Type: AWS::EC2::InternetGateway
+    DependsOn: VPC
+  AttachGateway:
+    Type: AWS::EC2::VPCGatewayAttachment
+    DependsOn:
+      - VPC
+      - InternetGateway
+    Properties:
+      VpcId: !Ref 'VPC'
+      InternetGatewayId: !Ref 'InternetGateway'
+  PublicSubnet1:
+    Type: AWS::EC2::Subnet
+    DependsOn: AttachGateway
+    Properties:
+      VpcId: !Ref 'VPC'
+      MapPublicIpOnLaunch: 'true'
+      CidrBlock: !Ref 'PublicSubnet1Param'
+      AvailabilityZone: !Select
+        - '0'
+        - !GetAZs ''
+      Tags:
+        - Key: Name
+          Value: Public Subnet 1
+  PublicRouteTable:
+    Type: AWS::EC2::RouteTable
+    DependsOn:
+      - VPC
+      - AttachGateway
+    Properties:
+      VpcId: !Ref 'VPC'
+      Tags:
+        - Key: Name
+          Value: Public
+  PublicRoute:
+    Type: AWS::EC2::Route
+    DependsOn:
+      - PublicRouteTable
+      - AttachGateway
+    Properties:
+      RouteTableId: !Ref 'PublicRouteTable'
+      DestinationCidrBlock: '0.0.0.0/0'
+      GatewayId: !Ref 'InternetGateway'
+  PublicSubnet1RouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    DependsOn:
+      - PublicRouteTable
+      - PublicSubnet1
+      - AttachGateway
+    Properties:
+      SubnetId: !Ref 'PublicSubnet1'
+      RouteTableId: !Ref 'PublicRouteTable'
+  Ec2SecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: VPC Security Group
+      VpcId: !Ref 'VPC'
+      SecurityGroupIngress:
+        - CidrIp: '0.0.0.0/0'
+          FromPort: '22'
+          IpProtocol: tcp
+          ToPort: '22'
+
+  # Creates a Linux instance.
+  LinuxHost:
+    Type: AWS::EC2::Instance
+    DependsOn:
+      - PublicSubnet1RouteTableAssociation
+      - EC2InstanceProfile
+    Properties:
+      ImageId: !Ref AMZN2LinuxAMIId
+      InstanceType: !Ref 'InstanceType'
+      KeyName: !Ref KeyName
+      NetworkInterfaces:
+        - AssociatePublicIpAddress: true  # Optional as the subnet already has a public IP assigned.
+          DeviceIndex: 0
+          GroupSet:
+            - Ref: Ec2SecurityGroup
+          SubnetId: !Ref 'PublicSubnet1'
+      IamInstanceProfile: !Ref EC2InstanceProfile
+      UserData:
+        Fn::Base64: !Sub |
+          #!/bin/bash -ex
+          yum update -y
+          # This sample installs AWS CLIv2
+          curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
+          unzip awscliv2.zip
+          ./aws/install
+          rm -rf awscliv2.zip
+          rm -rf aws
+          alias aws=/usr/local/bin/aws
+          yum install python3 -y
+          python3 -m venv my_app/env
+          source ~/my_app/env/bin/activate
+          pip install pip --upgrade
+          deactivate
+      Tags:
+        -
+          Key: Name
+          Value: Linux Host
+
+  LabPolicy:
+    Type: AWS::IAM::ManagedPolicy
+    DependsOn: LabRole
+    Properties:
+      ManagedPolicyName: LabPolicy
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Action:
+              - 'ec2:Get*'
+              - 'ec2:List*'
+              - 'ec2:Describe*'
+              - 'cloudformation:ListStacks'
+              - 'cloudformation:DescribeStacks'
+              - 'cloudformation:DescribeStackEvents'
+              - 'cloudformation:DescribeStackResource'
+              - 'cloudformation:DescribeStackResources'
+              - 'cloudtrail:GetTrailStatus'
+              - 'cloudtrail:DescribeTrails'
+              - 'cloudtrail:LookupEvents'
+              - 'cloudtrail:ListTags'
+              - 'cloudtrail:ListPublicKeys'
+              - 'cloudtrail:GetEventSelectors'
+              - 'kms:ListAliases'
+            Resource: '*'
+            Effect: Allow      
+          - Sid: RestrictActions
+            Effect: Deny
+            Action:
+              - 'ec2:*Spot*'
+              - 'ec2:*ReservedInstances*'
+              - 'ec2:*Scheduled*'
+              - 'ec2:*Purchase*'
+              - 'ec2:EnableFastSnapshotRestores'
+              - 'ec2:*Fpga*'
+              - 'ec2:AcceptVpcEndpointConnections'
+              - 'ec2:AttachVpnGateway'
+              - 'ec2:CreateCapacityReservation'
+              - 'ec2:CreateVpnGateway'
+            Resource: '*'
+          - Sid: RestrictInstanceActions
+            Effect: Allow
+            Action:
+              - 'ec2:CreateVolume'
+              - 'ec2:ModifyVolume'
+              - 'ec2:ImportVolume'
+              - 'ec2:ModifyVolumeAttribute'
+              - 'ec2:ModifyFleet'
+              - 'ec2:ImportSnapshot'
+              - 'ec2:ResetInstanceAttribute'
+              - 'ec2:CreateFleet'
+              - 'ec2:CreateLaunchTemplateVersion'
+              - 'ec2:EnableVolumeIO'
+              - 'ec2:CreateLaunchTemplate'
+              - 'ec2:ImportInstance'
+              - 'ec2:ModifyInstanceCreditSpecification'
+              - 'ec2:ModifyLaunchTemplate'
+              - 'ec2:ModifyInstanceAttribute'
+              - 'ec2:RebootInstances'
+              - 'ec2:RunInstances'
+              - 'ec2:StartInstances'
+            Resource: '*'
+            Condition:
+              StringEqualsIfExists:
+                'ec2:Owner': amazon
+              'ForAllValues:StringLikeIfExists':
+                'ec2:InstanceType':
+                  - '*.nano'
+                  - '*.micro'
+                  - '*.small'
+                'ec2:Tenancy': default
+              StringNotEqualsIfExists:
+                'ec2:PlacementGroupStrategy': cluster
+              StringNotEqualsIgnoreCaseIfExists:
+                'ec2:VolumeType':
+                  - io1
+                  - st1
+              NumericLessThanEqualsIfExists:
+                'ec2:VolumeSize': '51'
+      Roles:
+        - !Ref LabRole
+
+  LabRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: "LabRole"
+      Path: "/"
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - ec2.amazonaws.com
+            Action:
+              - sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/ReadOnlyAccess                      # Provide read access
+        - arn:aws:iam::aws:policy/service-role/AmazonEC2RoleforSSM    # SSM access for RunCommand and Session Manager
+
+  # Creating an EC2 instance profile based on the above role.
+  EC2InstanceProfile:
+    Type: AWS::IAM::InstanceProfile
+    DependsOn: LabRole
+    Properties:
+      InstanceProfileName: "EC2InstanceProfile"
+      Path: "/"
+      Roles:
+      - !Ref LabRole
+
+  LabUser:
+    Type: AWS::IAM::User
+    DependsOn: LabPolicy
+    Properties:
+      UserName: "awsstudent"
+      LoginProfile:
+        Password: !Ref UserPassword
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/ReadOnlyAccess
+        - !Sub arn:aws:iam::${AWS::AccountId}:policy/LabPolicy       # Attach the default policy created for the lab environment and attach it to the below Instance profile. I assume that the account contains a managed policy named "lab_policy"
+
+  userAccessKey:
+    Type: AWS::IAM::AccessKey
+    DependsOn: LabUser
+    Properties:
+      UserName: 'awsstudent'
