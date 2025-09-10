@@ -1,11 +1,11 @@
 #!/bin/bash
-# Script para aprovisionar infraestructura del laboratorio IAM
+# Script para aprovisionar infraestructura del laboratorio de Monitoreo
 
-STACK_NAME="lab-iam-infrastructure"
+STACK_NAME="lab-monitoring-infrastructure"
 TEMPLATE_FILE="lab.template"
 REGION="us-east-1"
 
-echo "🚀 Desplegando infraestructura del laboratorio IAM..."
+echo "🚀 Desplegando infraestructura del laboratorio de Monitoreo..."
 
 aws cloudformation create-stack \
   --stack-name $STACK_NAME \
@@ -22,7 +22,7 @@ aws cloudformation wait stack-create-complete \
 if [ $? -eq 0 ]; then
     echo "✅ Infraestructura desplegada exitosamente!"
     echo "📊 Puedes ver los recursos creados en la consola de CloudFormation"
-    echo "👥 Se han creado usuarios IAM para el laboratorio"
+    echo "📈 Se han creado recursos para el laboratorio de Monitoreo"
     
     # Mostrar outputs del stack
     echo "📋 Recursos creados:"

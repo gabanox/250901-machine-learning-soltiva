@@ -7,16 +7,21 @@ Description: Monitoring Lab
 
 Parameters:
 
-  KeyName:
-    Type: String
-    Description: Keyname for the keypair that Vocareum will use to launch EC2 instances
-    Default: default-lab-key
-
   AmazonLinuxAMIID:
     Type: AWS::SSM::Parameter::Value<AWS::EC2::Image::Id>
     Default: /aws/service/ami-amazon-linux-latest/amzn2-ami-hvm-x86_64-gp2
 
 Resources:
+
+###########
+# Key Pair
+###########
+
+  LabKeyPair:
+    Type: AWS::EC2::KeyPair
+    Properties:
+      KeyName: monitoring-lab-key-pair
+      KeyType: rsa
 
 ###########
 # VPC with Internet Gateway
@@ -168,7 +173,7 @@ Resources:
       - AppSecurityGroup
       - VPCtoIGWConnection
     Properties:
-      KeyName: !Ref KeyName
+      KeyName: !Ref LabKeyPair
       IamInstanceProfile: !Ref AppInstanceProfile
       ImageId: !Ref AmazonLinuxAMIID
       InstanceType: t3.micro

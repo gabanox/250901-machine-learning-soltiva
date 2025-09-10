@@ -1,17 +1,17 @@
 #!/bin/bash
-# Script para aprovisionar infraestructura del laboratorio EC2
+# Script para aprovisionar infraestructura del laboratorio S3
 
-STACK_NAME="lab-ec2-infrastructure"
+STACK_NAME="lab-s3-infrastructure"
 TEMPLATE_FILE="lab.template"
 REGION="us-east-1"
 
-echo "🚀 Desplegando infraestructura del laboratorio EC2..."
+echo "🚀 Desplegando infraestructura del laboratorio S3..."
 
 aws cloudformation create-stack \
   --stack-name $STACK_NAME \
   --template-body file://$TEMPLATE_FILE \
   --region $REGION \
-  --capabilities CAPABILITY_IAM
+  --capabilities CAPABILITY_IAM CAPABILITY_NAMED_IAM
 
 echo "⏳ Esperando que se complete el despliegue..."
 

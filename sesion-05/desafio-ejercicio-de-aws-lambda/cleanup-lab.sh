@@ -1,10 +1,10 @@
 #!/bin/bash
-# Script para limpiar recursos del laboratorio S3
+# Script para limpiar recursos del laboratorio Lambda Challenge
 
-STACK_NAME="lab-s3-infrastructure"
+STACK_NAME="lab-lambda-challenge-infrastructure"
 REGION="us-east-1"
 
-echo "🧹 Limpiando recursos del laboratorio S3..."
+echo "🧹 Limpiando recursos del laboratorio Lambda Challenge..."
 
 aws cloudformation delete-stack \
   --stack-name $STACK_NAME \

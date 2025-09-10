@@ -1,10 +1,6 @@
 AWSTemplateFormatVersion: '2010-09-09'
 Description: ' Introduction to IAM'
 Parameters:
-  KeyName:
-    Description: Name of an existing EC2 KeyPair
-    Type: String
-
   Bucket:
     Default: aws-training
     Description: Bucket for staged assets.
